@@ -1,91 +1,159 @@
 import { api } from './api.js';
-import { getCurrentUser } from './state.js';
 
-const chatList = document.getElementById('chatList');
-const chatBox = document.getElementById('chatBox');
-const chatInput = document.getElementById('chatInput');
-const sendBtn = document.getElementById('sendBtn');
+import {
+  getCurrentUser,
+  setSelectedContact,
+  getMessagePoll,
+  setMessagePoll
+} from './state.js';
 
-let selectedConvoyID = null;
+import { chatTitle, messagesBox, contactsList } from './doc.js';
+import { showChatPanel } from './ui.js';
+import { escapeHtml } from './utils.js';
 
-// ================= LOAD CONVOYS =================
-export async function loadConvoyChats() {
-  const user = getCurrentUser();
-  if (!user) return;
+let selectedGroupChat = null;
 
-  chatList.innerHTML = '';
+export function getSelectedGroupChat() {
+  return selectedGroupChat;
+}
+
+export function setSelectedGroupChat(group) {
+  selectedGroupChat = group;
+}
+
+export async function loadGroupChats() {
+  const currentUser = getCurrentUser();
+
+  if (!currentUser || !contactsList) return;
+
+  showChatPanel('Select a convoy chat');
+  setSelectedContact(null);
+  selectedGroupChat = null;
+  messagesBox.innerHTML = '';
+
+  const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+  if (leaveGroupBtn) leaveGroupBtn.style.display = 'none';
+
+  contactsList.innerHTML = '';
 
   try {
-    const convoys = await api('/convoys/my');
+    const groups = await api(`/groups/${currentUser.userID}`);
 
-    convoys.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'chat-item';
-      div.textContent = `Convoy: ${c.convoyID}`;
+    if (groups.length === 0) {
+      contactsList.innerHTML = '<p>Join or create a convoy first.</p>';
+      return;
+    }
 
-      div.onclick = () => {
-        selectedConvoyID = c.convoyID;
-        loadMessages();
-      };
+    groups.forEach(function (group) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'contact-btn';
+      button.textContent = `Convoy: ${group.name || group.convoyID}`;
 
-      chatList.appendChild(div);
+      button.addEventListener('click', function () {
+        selectGroupChat(group);
+      });
+
+      contactsList.appendChild(button);
     });
-  } catch (err) {
-    console.error(err);
-    chatList.innerHTML = 'Failed to load convoys.';
+  } catch (error) {
+    contactsList.innerHTML = `<p class="error">${error.message}</p>`;
   }
 }
 
-// ================= LOAD MESSAGES =================
-async function loadMessages() {
-  if (!selectedConvoyID) return;
+export async function createGroup(event) {
+  if (event) event.preventDefault();
+  alert('Group chats are now created automatically from convoys.');
+}
 
-  chatBox.innerHTML = 'Loading...';
+export async function selectGroupChat(group) {
+  selectedGroupChat = group;
+  setSelectedContact(null);
+
+  showChatPanel(`Convoy Chat: ${group.name || group.convoyID}`);
+
+  const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+  if (leaveGroupBtn) leaveGroupBtn.style.display = 'none';
+
+  await loadGroupMessages();
+
+  const oldPoll = getMessagePoll();
+  if (oldPoll) clearInterval(oldPoll);
+
+  const newPoll = setInterval(loadGroupMessages, 3000);
+  setMessagePoll(newPoll);
+}
+
+export async function loadGroupMessages() {
+  const currentUser = getCurrentUser();
+
+  if (!currentUser || !selectedGroupChat || !messagesBox) return;
+
+  const convoyID = selectedGroupChat.convoyID || selectedGroupChat.id;
 
   try {
-    const messages = await api(`/groups/convoy/${selectedConvoyID}`);
+    const messages = await api(`/groups/convoy/${convoyID}`);
 
-    chatBox.innerHTML = '';
+    if (messages.length === 0) {
+      messagesBox.innerHTML = '<p>No convoy messages yet.</p>';
+      return;
+    }
 
-    messages.forEach(m => {
-      const div = document.createElement('div');
-      div.className = 'message';
+    messagesBox.innerHTML = messages
+      .map(function (message) {
+        let who = `${message.first_name} ${message.last_name}`;
+        let extraClass = '';
 
-      div.innerHTML = `
-        <strong>${m.userName}</strong>: ${m.message_text}
-      `;
+        if (Number(message.sender_id) === Number(currentUser.userID)) {
+          who = 'You';
+          extraClass = 'mine';
+        }
 
-      chatBox.appendChild(div);
-    });
+        return `<div class="message ${extraClass}"><strong>${escapeHtml(who)}:</strong> ${escapeHtml(message.message_text)}</div>`;
+      })
+      .join('');
 
-    chatBox.scrollTop = chatBox.scrollHeight;
-  } catch (err) {
-    console.error(err);
-    chatBox.innerHTML = 'Could not load convoy messages.';
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+  } catch (error) {
+    messagesBox.innerHTML = `<p class="error">${error.message}</p>`;
   }
 }
 
-// ================= SEND MESSAGE =================
-sendBtn.onclick = async () => {
-  const user = getCurrentUser();
-  const text = chatInput.value.trim();
+export async function sendMessage(event) {
+  event.preventDefault();
 
-  if (!text || !selectedConvoyID) return;
+  const currentUser = getCurrentUser();
+  if (!currentUser) return;
+
+  if (!selectedGroupChat) {
+    alert('Select a convoy chat first.');
+    return;
+  }
+
+  const input = document.getElementById('messageInput');
+  const messageText = input.value.trim();
+
+  if (!messageText) return;
+
+  const convoyID = selectedGroupChat.convoyID || selectedGroupChat.id;
 
   try {
     await api('/groups/convoy/send', {
       method: 'POST',
       body: JSON.stringify({
-        convoyID: selectedConvoyID,
-        sender_id: user.userID,
-        message_text: text
+        convoyID: convoyID,
+        sender_id: currentUser.userID,
+        message_text: messageText
       })
     });
 
-    chatInput.value = '';
-    loadMessages();
-  } catch (err) {
-    console.error(err);
-    alert('Could not send convoy message.');
+    input.value = '';
+    await loadGroupMessages();
+  } catch (error) {
+    alert(error.message);
   }
-};
+}
+
+export async function leaveGroupChat() {
+  alert('Convoy chats are based on convoy membership. Leave the convoy to leave this chat.');
+}
