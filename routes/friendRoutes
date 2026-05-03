@@ -1,0 +1,262 @@
+module.exports = function (db, makeId, getUserByUsername) {
+  const express = require('express');
+  const router = express.Router();
+
+  router.post('/friends/request', async function (req, res) {
+    try {
+      const { currentUserID, friendUsername } = req.body;
+
+      if (!currentUserID || !friendUsername) {
+        return res.status(400).json({ message: 'Missing friend data.' });
+      }
+
+      const friend = await getUserByUsername(friendUsername.trim());
+
+      if (!friend) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+
+      if (Number(currentUserID) === Number(friend.userID)) {
+        return res.status(400).json({ message: 'You cannot add yourself.' });
+      }
+
+      const [blocked] = await db.query(
+        `SELECT 1 FROM blocks
+         WHERE (blocker_id = ? AND blocked_id = ?)
+            OR (blocker_id = ? AND blocked_id = ?)`,
+        [currentUserID, friend.userID, friend.userID, currentUserID]
+      );
+
+      if (blocked.length > 0) {
+        return res.status(403).json({
+          message: 'You cannot send a friend request to this user.'
+        });
+      }
+
+      const [existing] = await db.query(
+        `SELECT * FROM friendships
+         WHERE (sender_id = ? AND receiver_id = ?)
+            OR (sender_id = ? AND receiver_id = ?)`,
+        [currentUserID, friend.userID, friend.userID, currentUserID]
+      );
+
+      if (existing.length > 0) {
+        const row = existing[0];
+
+        if (row.status === 'accepted') {
+          return res.status(400).json({ message: 'You are already friends.' });
+        }
+
+        if (row.status === 'pending') {
+          return res.status(400).json({ message: 'A friend request already exists.' });
+        }
+
+        await db.query(
+          `UPDATE friendships
+           SET sender_id = ?, receiver_id = ?, status = ?
+           WHERE id = ?`,
+          [currentUserID, friend.userID, 'pending', row.id]
+        );
+
+        return res.json({ message: 'Friend request re-sent.' });
+      }
+
+      await db.query(
+        `INSERT INTO friendships (id, sender_id, receiver_id, status)
+         VALUES (?, ?, ?, 'pending')`,
+        [makeId(), currentUserID, friend.userID]
+      );
+
+      res.json({ message: 'Friend request sent.' });
+
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: 'Could not send friend request.' });
+    }
+  });
+
+  router.get('/friends/requests/:userID', async function (req, res) {
+    try {
+      const { userID } = req.params;
+
+      const [rows] = await db.query(
+        `SELECT f.sender_id, u.userName AS senderName
+         FROM friendships f
+         JOIN users u ON u.userID = f.sender_id
+         WHERE f.receiver_id = ? AND f.status = 'pending'
+         ORDER BY f.created_at DESC`,
+        [userID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({ message: 'Could not load friend requests.' });
+    }
+  });
+
+  router.post('/friends/respond', async function (req, res) {
+    try {
+      const { sender_id, receiver_id, accept } = req.body;
+
+      const newStatus = accept ? 'accepted' : 'rejected';
+
+      const [result] = await db.query(
+        `UPDATE friendships
+         SET status = ?
+         WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'`,
+        [newStatus, sender_id, receiver_id]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Request not found.' });
+      }
+
+      res.json({
+        message: accept ? 'Friend request accepted.' : 'Friend request denied.'
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: 'Could not update friend request.' });
+    }
+  });
+
+  router.get('/friends/list/:userID', async function (req, res) {
+    try {
+      const { userID } = req.params;
+
+      const [rows] = await db.query(
+        `SELECT u.userID, u.userName
+         FROM friendships f
+         JOIN users u ON (
+           (u.userID = f.sender_id AND f.receiver_id = ?)
+           OR (u.userID = f.receiver_id AND f.sender_id = ?)
+         )
+         WHERE f.status = 'accepted'
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (
+             (b.blocker_id = ? AND b.blocked_id = u.userID)
+             OR
+             (b.blocker_id = u.userID AND b.blocked_id = ?)
+           )
+         )
+         ORDER BY u.userName`,
+        [userID, userID, userID, userID]
+      );
+
+      res.json(rows);
+
+    } catch (error) {
+      res.status(500).json({ message: 'Could not load friends.' });
+    }
+  });
+
+  router.get('/users/:userID/contacts', async function (req, res) {
+    try {
+      const { userID } = req.params;
+
+      const [rows] = await db.query(
+        `SELECT u.userID, u.userName, u.first_name, u.last_name
+         FROM friendships f
+         JOIN users u ON (
+           (u.userID = f.sender_id AND f.receiver_id = ?)
+           OR (u.userID = f.receiver_id AND f.sender_id = ?)
+         )
+         WHERE f.status = 'accepted'
+         ORDER BY u.userName`,
+        [userID, userID]
+      );
+
+      res.json(rows);
+
+    } catch (error) {
+      res.status(500).json({ message: 'Could not load contacts.' });
+    }
+  });
+
+  router.post('/friends/remove', async function (req, res) {
+    try {
+      const { currentUserID, friendID } = req.body;
+
+      const [result] = await db.query(
+        `DELETE FROM friendships
+         WHERE (sender_id = ? AND receiver_id = ?)
+            OR (sender_id = ? AND receiver_id = ?)`,
+        [currentUserID, friendID, friendID, currentUserID]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Friend not found.' });
+      }
+
+      res.json({ message: 'Friend removed.' });
+
+    } catch (error) {
+      res.status(500).json({ message: 'Error removing friend.' });
+    }
+  });
+
+  router.post('/friends/block', async function (req, res) {
+    try {
+      const { currentUserID, targetUserID } = req.body;
+
+      await db.query(
+        `DELETE FROM friendships
+         WHERE (sender_id = ? AND receiver_id = ?)
+            OR (sender_id = ? AND receiver_id = ?)`,
+        [currentUserID, targetUserID, targetUserID, currentUserID]
+      );
+
+      await db.query(
+        `INSERT INTO blocks (blocker_id, blocked_id)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE blocked_id = blocked_id`,
+        [currentUserID, targetUserID]
+      );
+
+      res.json({ message: 'User blocked.' });
+
+    } catch (error) {
+      res.status(500).json({ message: 'Error blocking user.' });
+    }
+  });
+
+  router.get('/friends/blocked/:userID', async function (req, res) {
+    try {
+      const { userID } = req.params;
+
+      const [rows] = await db.query(
+        `SELECT u.userID, u.userName
+         FROM blocks b
+         JOIN users u ON u.userID = b.blocked_id
+         WHERE b.blocker_id = ?
+         ORDER BY u.userName`,
+        [userID]
+      );
+
+      res.json(rows);
+
+    } catch (error) {
+      res.status(500).json({ message: 'Could not load blocked users.' });
+    }
+  });
+
+  router.post('/friends/unblock', async function (req, res) {
+    try {
+      const { currentUserID, targetUserID } = req.body;
+
+      await db.query(
+        `DELETE FROM blocks
+         WHERE blocker_id = ? AND blocked_id = ?`,
+        [currentUserID, targetUserID]
+      );
+
+      res.json({ message: 'User unblocked.' });
+
+    } catch (error) {
+      res.status(500).json({ message: 'Could not unblock user.' });
+    }
+  });
+
+  return router;
+};

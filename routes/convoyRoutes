@@ -1,0 +1,242 @@
+// This file handles all Convoy backend by Momen
+
+module.exports = function (db) {
+  const express = require('express');
+  const router = express.Router();
+
+  // CREATE CONVOY
+  router.post('/convoys', async function (req, res) {
+    const connection = await db.getConnection();
+
+    try {
+      const userID = req.body.userID;
+      const name = req.body.name;
+      const joinCode = req.body.joinCode;
+
+      if (!userID || !name || !joinCode) {
+        return res.status(400).json({
+          message: 'Missing convoy data.'
+        });
+      }
+
+      await connection.beginTransaction();
+
+      const [result] = await connection.query(
+        'INSERT INTO convoys (joinCode, host_userID, name) VALUES (?, ?, ?)',
+        [joinCode.trim(), userID, name.trim()]
+      );
+
+      await connection.query(
+        `INSERT INTO convoy_members (userID, convoyID, role)
+         VALUES (?, ?, 'host')`,
+        [userID, result.insertId]
+      );
+
+      await connection.commit();
+
+      res.json({
+        message: 'Convoy created successfully.',
+        convoyID: result.insertId
+      });
+    } catch (error) {
+      await connection.rollback();
+
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({
+          message: 'Join code already exists or user is already in convoy.'
+        });
+      }
+
+      res.status(500).json({
+        message: 'Could not create convoy.'
+      });
+    } finally {
+      connection.release();
+    }
+  });
+
+  // JOIN CONVOY
+  router.post('/convoys/join', async function (req, res) {
+    try {
+      const userID = req.body.userID;
+      const joinCode = req.body.joinCode;
+
+      if (!userID || !joinCode) {
+        return res.status(400).json({
+          message: 'Missing join data.'
+        });
+      }
+
+      const [convoys] = await db.query(
+        'SELECT convoyID FROM convoys WHERE joinCode = ?',
+        [joinCode.trim()]
+      );
+
+      if (convoys.length === 0) {
+        return res.status(404).json({
+          message: 'Convoy not found.'
+        });
+      }
+
+      await db.query(
+        `INSERT INTO convoy_members (userID, convoyID, role)
+         VALUES (?, ?, 'member')`,
+        [userID, convoys[0].convoyID]
+      );
+
+      res.json({
+        message: 'Joined convoy successfully.',
+        convoyID: convoys[0].convoyID
+      });
+    } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({
+          message: 'User is already in this convoy.'
+        });
+      }
+
+      res.status(500).json({
+        message: 'Could not join convoy.'
+      });
+    }
+  });
+
+  // GET CONVOY MEMBERS
+  router.get('/convoys/:convoyID/members', async function (req, res) {
+    try {
+      const convoyID = req.params.convoyID;
+
+      const [rows] = await db.query(
+        `SELECT u.userID, u.userName, cm.role
+         FROM convoy_members cm
+         JOIN users u ON u.userID = cm.userID
+         WHERE cm.convoyID = ?
+         ORDER BY FIELD(cm.role, 'host', 'member'), u.userName`,
+        [convoyID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load members.'
+      });
+    }
+  });
+
+  // GET USER'S CONVOYS
+  router.get('/convoys/by-user/:userID', async function (req, res) {
+    try {
+      const userID = req.params.userID;
+
+      const [rows] = await db.query(
+        `SELECT c.convoyID, c.name, c.joinCode, cm.role
+         FROM convoy_members cm
+         JOIN convoys c ON c.convoyID = cm.convoyID
+         WHERE cm.userID = ?
+         ORDER BY c.created_at DESC`,
+        [userID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load convoys.'
+      });
+    }
+  });
+
+  // MAKE SOMEONE HOST
+  router.put('/convoys/:convoyID/host', async function (req, res) {
+    const convoyID = req.params.convoyID;
+    const currentUserID = req.body.currentUserID;
+    const newHostID = req.body.newHostID;
+
+    try {
+      const [rows] = await db.query(
+        'SELECT host_userID FROM convoys WHERE convoyID = ?',
+        [convoyID]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          message: 'Convoy not found'
+        });
+      }
+
+      if (Number(rows[0].host_userID) !== Number(currentUserID)) {
+        return res.status(403).json({
+          message: 'Only the host can assign a new host'
+        });
+      }
+
+      await db.query(
+        'UPDATE convoys SET host_userID = ? WHERE convoyID = ?',
+        [newHostID, convoyID]
+      );
+
+      await db.query(
+        `UPDATE convoy_members
+         SET role = CASE WHEN userID = ? THEN 'host' ELSE 'member' END
+         WHERE convoyID = ?`,
+        [newHostID, convoyID]
+      );
+
+      res.json({
+        message: 'Host updated successfully'
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: 'Could not update host'
+      });
+    }
+  });
+
+  // KICK MEMBER
+  router.delete('/convoys/:convoyID/members/:userID', async function (req, res) {
+    const convoyID = req.params.convoyID;
+    const userID = req.params.userID;
+    const currentUserID = req.body.currentUserID;
+
+    try {
+      const [rows] = await db.query(
+        'SELECT host_userID FROM convoys WHERE convoyID = ?',
+        [convoyID]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          message: 'Convoy not found'
+        });
+      }
+
+      if (Number(rows[0].host_userID) !== Number(currentUserID)) {
+        return res.status(403).json({
+          message: 'Only the host can kick members'
+        });
+      }
+
+      if (Number(userID) === Number(currentUserID)) {
+        return res.status(400).json({
+          message: 'Host cannot kick themselves'
+        });
+      }
+
+      await db.query(
+        'DELETE FROM convoy_members WHERE convoyID = ? AND userID = ?',
+        [convoyID, userID]
+      );
+
+      res.json({
+        message: 'Member kicked successfully'
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: 'Could not kick member'
+      });
+    }
+  });
+
+  return router;
+};

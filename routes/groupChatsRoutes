@@ -1,0 +1,103 @@
+// Convoy chat backend. Convoy chats are created automatically from convoy membership.
+
+module.exports = function (db) {
+  const express = require('express');
+  const router = express.Router();
+
+  // Return every convoy the user belongs to as an automatic convoy chat.
+  router.get('/groups/:userId', async function (req, res) {
+    try {
+      const userId = req.params.userId;
+
+      const [rows] = await db.query(
+        `SELECT c.convoyID AS id, c.name, c.host_userID AS created_by, c.created_at
+         FROM convoy_members cm
+         JOIN convoys c ON c.convoyID = cm.convoyID
+         WHERE cm.userID = ?
+         ORDER BY c.created_at DESC, c.name ASC`,
+        [userId]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load convoy chats.'
+      });
+    }
+  });
+
+  // Kept for compatibility with older front-end calls, but manual groups are disabled.
+  router.post('/groups', async function (req, res) {
+    res.status(400).json({
+      message: 'Group chats are now created automatically from convoys.'
+    });
+  });
+
+  router.post('/group-messages', async function (req, res) {
+    try {
+      const group_id = req.body.group_id;
+      const sender_id = req.body.sender_id;
+      const message_text = req.body.message_text;
+
+      if (!group_id || !sender_id || !message_text) {
+        return res.status(400).json({
+          message: 'Missing convoy chat message data.'
+        });
+      }
+
+      const [membership] = await db.query(
+        'SELECT 1 FROM convoy_members WHERE convoyID = ? AND userID = ?',
+        [group_id, sender_id]
+      );
+
+      if (membership.length === 0) {
+        return res.status(403).json({
+          message: 'You must be in this convoy to send messages.'
+        });
+      }
+
+      await db.query(
+        'INSERT INTO convoy_messages (convoyID, sender_id, message_text) VALUES (?, ?, ?)',
+        [group_id, sender_id, message_text.trim()]
+      );
+
+      res.json({
+        message: 'Convoy message sent.'
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not send convoy message.'
+      });
+    }
+  });
+
+  router.get('/group-messages/:groupId', async function (req, res) {
+    try {
+      const groupId = req.params.groupId;
+
+      const [rows] = await db.query(
+        `SELECT cm.id, cm.convoyID AS group_id, cm.sender_id, cm.message_text, cm.created_at,
+                u.first_name, u.last_name, u.userName
+         FROM convoy_messages cm
+         INNER JOIN users u ON cm.sender_id = u.userID
+         WHERE cm.convoyID = ?
+         ORDER BY cm.created_at ASC, cm.id ASC`,
+        [groupId]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load convoy messages.'
+      });
+    }
+  });
+
+  router.post('/groups/leave', async function (req, res) {
+    res.status(400).json({
+      message: 'Convoy chats are controlled by convoy membership.'
+    });
+  });
+
+  return router;
+};

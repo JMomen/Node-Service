@@ -1,0 +1,59 @@
+// This file handles all gps backend by Jovanny
+
+module.exports = function (db) {
+  const express = require('express');
+  const router = express.Router();
+
+  router.post('/gps', async function (req, res) {
+    try {
+      const userID = req.body.userID;
+      const convoyID = req.body.convoyID;
+      const latitude = req.body.latitude;
+      const longitude = req.body.longitude;
+
+      if (!userID || !convoyID || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({
+          message: 'Missing GPS data.'
+        });
+      }
+
+      await db.query(
+        `INSERT INTO gps (userID, convoyID, latitude, longitude)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE latitude = VALUES(latitude), longitude = VALUES(longitude)`,
+        [userID, convoyID, latitude, longitude]
+      );
+
+      res.json({
+        message: 'Location shared successfully.'
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not save location.'
+      });
+    }
+  });
+
+  router.get('/gps/:convoyID', async function (req, res) {
+    try {
+      const convoyID = req.params.convoyID;
+
+      const [rows] = await db.query(
+        `SELECT g.userID, u.userName, g.latitude, g.longitude, g.updatedAt
+         FROM gps g
+         JOIN users u ON u.userID = g.userID
+         WHERE g.convoyID = ?
+         ORDER BY g.updatedAt DESC`,
+        [convoyID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load GPS data.'
+      });
+    }
+  });
+
+  return router;
+};

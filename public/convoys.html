@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Convoys | Convoy</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="./Convoy.jpg" alt="Convoy logo" class="logo" />
+      <div>
+        <h1>Convoy</h1>
+        <p>Travel together.</p>
+      </div>
+    </div>
+    <nav class="side-nav">
+      <a class="nav-link " href="/dashboard.html">Dashboard</a>
+<a class="nav-link active" href="/convoys.html">Convoys</a>
+<a class="nav-link " href="/friends.html">Friends</a>
+<a class="nav-link " href="/messages.html">Messages</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p id="currentUser" class="current-user"></p>
+      <button id="logoutBtn" type="button" class="ghost-btn">Logout</button>
+    </div>
+  </aside>
+  <main class="app-main">
+    <section class="page-header">
+      <p class="eyebrow">Convoy App</p>
+      <h2>Convoys</h2>
+      <p>Create or join a convoy, manage members, and share GPS from the same page.</p>
+    </section>
+    <section class="content-grid two-column">
+      <article class="card">
+        <h3>Create Convoy</h3>
+        <form id="createConvoyForm" class="stack">
+          <input id="convoyName" placeholder="Convoy name" required />
+          <input id="createJoinCode" placeholder="Join code" required />
+          <button type="submit">Create Convoy</button>
+        </form>
+
+        <h3 class="section-spacer">Join Convoy</h3>
+        <form id="joinConvoyForm" class="stack">
+          <input id="joinCode" placeholder="Join code" required />
+          <button type="submit">Join Convoy</button>
+        </form>
+        <p id="convoyResult" class="result"></p>
+      </article>
+
+      <article class="card">
+        <h3>Active Convoy</h3>
+        <label for="activeConvoySelect">Select convoy</label>
+        <select id="activeConvoySelect"></select>
+        <div class="row gap small-top wrap">
+          <button id="loadMembersBtn" type="button">Load Members</button>
+          <button id="loadGpsBtn" type="button">Load GPS</button>
+          <button id="shareLocationBtn" type="button">Share My Location</button>
+        </div>
+        <p id="gpsResult" class="result"></p>
+        <h3 class="section-spacer">Members</h3>
+        <div id="membersList" class="list-box"></div>
+        <h3 class="section-spacer">GPS Locations</h3>
+        <div id="gpsList" class="list-box"></div>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
