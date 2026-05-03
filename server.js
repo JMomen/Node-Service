@@ -1,4 +1,3 @@
-
 const express = require('express');
 const path = require('path');
 const mysql = require('mysql2');
@@ -52,7 +51,7 @@ app.use('/api', authRoutes);
 app.use('/api', convoyRoutes);
 app.use('/api', friendRoutes);
 app.use('/api', messageRoutes);
-app.use('/api', groupChatsRoutes);
+app.use('/api/groups', groupChatsRoutes);
 app.use('/api', gpsRoutes);
 
 app.get('/', function (req, res) {
