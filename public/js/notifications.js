@@ -123,5 +123,5 @@ export function startNotificationSystem() {
   checkNotifications();
   markCurrentPageAsRead();
 
-  setInterval(checkNotifications, 5000);
+  setInterval(checkNotifications, 1500);
 }

@@ -277,7 +277,7 @@ if (toggleBlockedBtn) {
     showingBlocked = !showingBlocked;
 
     this.textContent = showingBlocked
-      ? 'Show Friends'
+      ? 'Hide Blocked Users'
       : 'Show Blocked Users';
 
     await loadFriends();

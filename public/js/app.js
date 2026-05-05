@@ -1,6 +1,6 @@
 import { registerUser, loginUser, logout } from './auth.js';
 
-import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMember, leaveConvoy } from './convoys.js';
+import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMember, leaveConvoy, deleteConvoy } from './convoys.js';
 
 import { sendFriendRequest, loadFriends, loadRequests, loadContacts, showFriendsOnly } from './friends.js';
 
@@ -35,6 +35,7 @@ const shareLocationBtn = document.getElementById('shareLocationBtn');
 const showDirectBtn = document.getElementById('showDirectBtn');
 const showGroupsBtn = document.getElementById('showGroupsBtn');
 const leaveConvoyBtn = document.getElementById('leaveConvoyBtn');
+const deleteConvoyBtn = document.getElementById('deleteConvoyBtn');
 
 const contactsList = document.getElementById('contactsList');
 const groupCreateBox = document.getElementById('groupCreateBox');
@@ -77,7 +78,7 @@ if (shareLocationBtn) shareLocationBtn.addEventListener('click', shareLocation);
 if (showDirectBtn) showDirectBtn.addEventListener('click', loadContacts);
 if (showGroupsBtn) showGroupsBtn.addEventListener('click', loadGroupChats);
 if (leaveConvoyBtn) leaveConvoyBtn.addEventListener('click', leaveConvoy);
-
+if (deleteConvoyBtn) deleteConvoyBtn.addEventListener('click', deleteConvoy);
 
 // convoy dropdown change
 if (activeConvoySelect) {
@@ -136,27 +137,37 @@ if (currentUser) {
 
 startNotificationSystem();
 
-setInterval(function () {
+startNotificationSystem();
+
+let isAutoRefreshing = false;
+
+setInterval(async function () {
   const currentUser = getCurrentUser();
   const pathname = window.location.pathname;
 
-  if (!currentUser) return;
+  if (!currentUser || isAutoRefreshing) return;
 
-  if (pathname.endsWith('/friends.html')) {
-    loadFriends();
-    loadRequests();
-  }
+  isAutoRefreshing = true;
 
-  if (pathname.endsWith('/convoys.html')) {
-    loadConvoys();
-  }
+  try {
+    if (pathname.endsWith('/friends.html')) {
+      await loadFriends();
+      await loadRequests();
+    }
 
-  if (pathname.endsWith('/dashboard.html')) {
-    loadConvoys();
-    loadFriends();
-  }
+    if (pathname.endsWith('/convoys.html')) {
+      await loadMembers();
+      await loadGps();
+    }
 
-  if (pathname.endsWith('/messages.html')) {
-    loadContacts();
+    if (pathname.endsWith('/dashboard.html')) {
+      await loadFriends();
+    }
+
+    if (pathname.endsWith('/messages.html')) {
+      await loadContacts();
+    }
+  } finally {
+    isAutoRefreshing = false;
   }
-}, 1500);
+}, 2000);

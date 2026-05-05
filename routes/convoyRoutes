@@ -227,6 +227,11 @@ module.exports = function (db) {
         [convoyID, userID]
       );
 
+      await db.query(
+        'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
+        [convoyID, userID]
+      );
+
       res.json({
         message: 'Member kicked successfully'
       });
@@ -239,49 +244,100 @@ module.exports = function (db) {
   });
 
   // LEAVE CONVOY
-router.delete('/convoys/:convoyID/leave', async function (req, res) {
+  router.delete('/convoys/:convoyID/leave', async function (req, res) {
+    const convoyID = req.params.convoyID;
+    const userID = req.body.userID;
+
+    try {
+      if (!userID) {
+        return res.status(400).json({
+          message: 'Missing user ID.'
+        });
+      }
+
+      const [members] = await db.query(
+        'SELECT role FROM convoy_members WHERE convoyID = ? AND userID = ?',
+        [convoyID, userID]
+      );
+
+      if (members.length === 0) {
+        return res.status(404).json({
+          message: 'You are not in this convoy.'
+        });
+      }
+
+      if (members[0].role === 'host') {
+        return res.status(400).json({
+          message: 'Host cannot leave. Make someone else host first.'
+        });
+      }
+
+      await db.query(
+        'DELETE FROM convoy_members WHERE convoyID = ? AND userID = ?',
+        [convoyID, userID]
+      );
+
+      await db.query(
+        'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
+        [convoyID, userID]
+      );
+
+      res.json({
+        message: 'You left the convoy.'
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: 'Could not leave convoy.'
+      });
+    }
+  });
+
+// DELETE CONVOY
+router.delete('/convoys/:convoyID', async function (req, res) {
   const convoyID = req.params.convoyID;
-  const userID = req.body.userID;
+  const currentUserID = req.body.currentUserID;
 
   try {
-    const [members] = await db.query(
-      'SELECT role FROM convoy_members WHERE convoyID = ? AND userID = ?',
-      [convoyID, userID]
+    const [rows] = await db.query(
+      'SELECT host_userID FROM convoys WHERE convoyID = ?',
+      [convoyID]
     );
 
-    if (members.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({
-        message: 'You are not in this convoy.'
+        message: 'Convoy not found.'
       });
     }
 
-    if (members[0].role === 'host') {
-      return res.status(400).json({
-        message: 'Host cannot leave. Make someone else host first.'
+    if (Number(rows[0].host_userID) !== Number(currentUserID)) {
+      return res.status(403).json({
+        message: 'Only the host can delete this convoy.'
       });
     }
 
     await db.query(
-      'DELETE FROM convoy_members WHERE convoyID = ? AND userID = ?',
-      [convoyID, userID]
+      'DELETE FROM gps WHERE convoyID = ?',
+      [convoyID]
     );
 
     await db.query(
-      'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
-      [convoyID, userID]
+      'DELETE FROM convoy_members WHERE convoyID = ?',
+      [convoyID]
     );
 
     await db.query(
-  'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
-  [convoyID, userID]
-);
+      'DELETE FROM convoys WHERE convoyID = ?',
+      [convoyID]
+    );
 
     res.json({
-      message: 'You left the convoy.'
+      message: 'Convoy deleted successfully.'
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
-      message: 'Could not leave convoy.'
+      message: 'Could not delete convoy.'
     });
   }
 });

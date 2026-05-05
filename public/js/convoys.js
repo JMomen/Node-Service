@@ -244,3 +244,37 @@ export async function loadMembers() {
     setText(convoyResult, error.message, true);
   }
 }
+
+export async function deleteConvoy() {
+  const currentUser = getCurrentUser();
+  const convoyID = getActiveConvoyID();
+
+  if (!currentUser || !convoyID) {
+    setText(convoyResult, 'Select a convoy first.', true);
+    return;
+  }
+
+  const confirmDelete = confirm('Are you sure you want to delete this convoy? This removes all members and GPS data.');
+
+  if (!confirmDelete) {
+    return;
+  }
+
+  try {
+    const data = await api(`/convoys/${convoyID}`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        currentUserID: currentUser.userID
+      })
+    });
+
+    setText(convoyResult, data.message);
+
+    if (membersList) membersList.innerHTML = '';
+    if (gpsList) gpsList.innerHTML = '';
+
+    await loadConvoys();
+  } catch (error) {
+    setText(convoyResult, error.message, true);
+  }
+}
