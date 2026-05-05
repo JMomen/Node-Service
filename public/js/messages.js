@@ -1,4 +1,3 @@
-
 import { api } from './api.js';
 
 import {
@@ -9,17 +8,19 @@ import {
   setMessagePoll
 } from './state.js';
 
-import { chatTitle, messagesBox } from './doc.js';
+import { messagesBox } from './doc.js';
 
 import { requireLogin, showChatPanel } from './ui.js';
 
 import { escapeHtml } from './utils.js';
 
+let lastRenderedMessages = '';
+
 export async function selectContact(contact) {
   setSelectedContact(contact);
   showChatPanel(`Chat with ${contact.first_name} ${contact.last_name}`);
 
-  await loadMessages();
+  await loadMessages(true);
 
   const oldPoll = getMessagePoll();
 
@@ -27,11 +28,14 @@ export async function selectContact(contact) {
     clearInterval(oldPoll);
   }
 
-  const newPoll = setInterval(loadMessages, 3000);
+  const newPoll = setInterval(function () {
+    loadMessages(false);
+  }, 2000);
+
   setMessagePoll(newPoll);
 }
 
-export async function loadMessages() {
+export async function loadMessages(forceScroll = false) {
   const currentUser = getCurrentUser();
   const selectedContact = getSelectedContact();
 
@@ -39,29 +43,42 @@ export async function loadMessages() {
     return;
   }
 
+  const nearBottom =
+    messagesBox.scrollTop + messagesBox.clientHeight >= messagesBox.scrollHeight - 80;
+
   try {
     const messages = await api(`/messages/${currentUser.userID}/${selectedContact.userID}`);
 
+    let html = '';
+
     if (messages.length === 0) {
-      messagesBox.innerHTML = '<p>No messages yet.</p>';
+      html = '<p>No messages yet.</p>';
+    } else {
+      html = messages
+        .map(function (message) {
+          let who = selectedContact.first_name;
+          let extraClass = '';
+
+          if (Number(message.sender_id) === Number(currentUser.userID)) {
+            who = 'You';
+            extraClass = 'mine';
+          }
+
+          return `<div class="message ${extraClass}"><strong>${who}:</strong> ${escapeHtml(message.message_text)}</div>`;
+        })
+        .join('');
+    }
+
+    if (html === lastRenderedMessages) {
       return;
     }
 
-    messagesBox.innerHTML = messages
-      .map(function (message) {
-        let who = selectedContact.first_name;
-        let extraClass = '';
+    messagesBox.innerHTML = html;
+    lastRenderedMessages = html;
 
-        if (Number(message.sender_id) === Number(currentUser.userID)) {
-          who = 'You';
-          extraClass = 'mine';
-        }
-
-        return `<div class="message ${extraClass}"><strong>${who}:</strong> ${escapeHtml(message.message_text)}</div>`;
-      })
-      .join('');
-
-    messagesBox.scrollTop = messagesBox.scrollHeight;
+    if (forceScroll || nearBottom) {
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+    }
   } catch (error) {
     messagesBox.innerHTML = `<p class="error">${error.message}</p>`;
   }
@@ -101,7 +118,7 @@ export async function sendDirectMessage(event) {
 
     input.value = '';
 
-    await loadMessages();
+    await loadMessages(true);
   } catch (error) {
     alert(error.message);
   }

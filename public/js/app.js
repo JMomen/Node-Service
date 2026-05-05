@@ -4,7 +4,7 @@ import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMembe
 
 import { sendFriendRequest, loadFriends, loadRequests, loadContacts, showFriendsOnly } from './friends.js';
 
-import { sendDirectMessage } from './messages.js';
+import { sendDirectMessage, refreshMessagesOnly } from './messages.js';
 
 import { sendMessage as sendGroupMessage, loadGroupChats, createGroup, leaveGroupChat, getSelectedGroupChat } from './groupchats.js';
 
@@ -131,8 +131,8 @@ if (currentUser) {
   }
 
   if (pathname.endsWith('/messages.html')) {
-    loadContacts();
-  }
+  await refreshMessagesOnly();
+}
 }
 
 startNotificationSystem();
