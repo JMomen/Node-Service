@@ -14,6 +14,8 @@ import { renderCurrentUser, hideChatPanel, requireLogin } from './ui.js';
 
 import { getCurrentUser } from './state.js';
 
+import { startNotificationSystem } from './notifications.js';
+
 
 // ================= ELEMENTS =================
 const registerForm = document.getElementById('registerForm');
@@ -114,7 +116,6 @@ if (currentUser) {
   if (
     pathname.endsWith('/dashboard.html') ||
     pathname.endsWith('/convoys.html') ||
-    pathname.endsWith('/gps.html')
   ) {
     loadConvoys();
   }
@@ -132,3 +133,5 @@ if (currentUser) {
     loadContacts();
   }
 }
+
+startNotificationSystem();
