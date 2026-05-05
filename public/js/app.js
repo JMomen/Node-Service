@@ -115,7 +115,7 @@ if (pathname !== '/login.html' && pathname !== '/' && !currentUser) {
 if (currentUser) {
   if (
     pathname.endsWith('/dashboard.html') ||
-    pathname.endsWith('/convoys.html') ||
+    pathname.endsWith('/convoys.html')
   ) {
     loadConvoys();
   }
