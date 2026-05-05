@@ -1,12 +1,23 @@
 import { registerUser, loginUser, logout } from './auth.js';
 
-import { createConvoy, joinConvoy, loadMembers, loadConvoys, leaveConvoy, deleteConvoy } from './convoys.js';
+import {
+  createConvoy,
+  joinConvoy,
+  loadMembers,
+  loadConvoys,
+  leaveConvoy,
+  deleteConvoy
+} from './convoys.js';
 
-import { sendFriendRequest, loadFriends, loadRequests, loadContacts, showFriendsOnly } from './friends.js';
+import {
+  sendFriendRequest,
+  loadFriends,
+  loadRequests,
+  loadContacts,
+  showFriendsOnly
+} from './friends.js';
 
 import { sendDirectMessage } from './messages.js';
-
-import { sendMessage as sendGroupMessage, loadGroupChats, createGroup, leaveGroupChat, getSelectedGroupChat } from './groupchats.js';
 
 import { shareLocation, loadGps } from './gps.js';
 
@@ -24,7 +35,6 @@ const createConvoyForm = document.getElementById('createConvoyForm');
 const joinConvoyForm = document.getElementById('joinConvoyForm');
 const friendRequestForm = document.getElementById('friendRequestForm');
 const messageForm = document.getElementById('messageForm');
-const createGroupForm = document.getElementById('createGroupForm');
 
 const logoutBtn = document.getElementById('logoutBtn');
 const loadMembersBtn = document.getElementById('loadMembersBtn');
@@ -33,12 +43,11 @@ const showFriendsBtn = document.getElementById('showFriendsBtn');
 const showRequestsBtn = document.getElementById('showRequestsBtn');
 const shareLocationBtn = document.getElementById('shareLocationBtn');
 const showDirectBtn = document.getElementById('showDirectBtn');
-const showGroupsBtn = document.getElementById('showGroupsBtn');
+
 const leaveConvoyBtn = document.getElementById('leaveConvoyBtn');
 const deleteConvoyBtn = document.getElementById('deleteConvoyBtn');
 
 const contactsList = document.getElementById('contactsList');
-const groupCreateBox = document.getElementById('groupCreateBox');
 const activeConvoySelect = document.getElementById('activeConvoySelect');
 const dashboardUserInfo = document.getElementById('dashboardUserInfo');
 
@@ -53,16 +62,8 @@ if (joinConvoyForm) joinConvoyForm.addEventListener('submit', joinConvoy);
 if (friendRequestForm) friendRequestForm.addEventListener('submit', sendFriendRequest);
 
 if (messageForm) {
-  messageForm.addEventListener('submit', function (event) {
-    if (getSelectedGroupChat()) {
-      sendGroupMessage(event);
-    } else {
-      sendDirectMessage(event);
-    }
-  });
+  messageForm.addEventListener('submit', sendDirectMessage);
 }
-
-if (createGroupForm) createGroupForm.addEventListener('submit', createGroup);
 
 if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
@@ -75,8 +76,6 @@ if (showRequestsBtn) showRequestsBtn.addEventListener('click', loadRequests);
 if (shareLocationBtn) shareLocationBtn.addEventListener('click', shareLocation);
 
 if (showDirectBtn) showDirectBtn.addEventListener('click', loadContacts);
-if (showGroupsBtn) showGroupsBtn.addEventListener('click', loadGroupChats);
-if (leaveGroupBtn) leaveGroupBtn.addEventListener('click', leaveGroupChat);
 
 if (leaveConvoyBtn) leaveConvoyBtn.addEventListener('click', leaveConvoy);
 if (deleteConvoyBtn) deleteConvoyBtn.addEventListener('click', deleteConvoy);
@@ -93,7 +92,6 @@ if (activeConvoySelect) {
 
 // ================= UI RESET =================
 if (contactsList) contactsList.innerHTML = '';
-if (groupCreateBox) groupCreateBox.style.display = 'none';
 
 renderCurrentUser();
 
