@@ -1,16 +1,16 @@
 import { registerUser, loginUser, logout } from './auth.js';
 
-import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMember, leaveConvoy, deleteConvoy } from './convoys.js';
+import { createConvoy, joinConvoy, loadMembers, loadConvoys, leaveConvoy, deleteConvoy } from './convoys.js';
 
 import { sendFriendRequest, loadFriends, loadRequests, loadContacts, showFriendsOnly } from './friends.js';
 
-import { sendDirectMessage, refreshMessagesOnly } from './messages.js';
+import { sendDirectMessage } from './messages.js';
 
 import { sendMessage as sendGroupMessage, loadGroupChats, createGroup, leaveGroupChat, getSelectedGroupChat } from './groupchats.js';
 
 import { shareLocation, loadGps } from './gps.js';
 
-import { renderCurrentUser, hideChatPanel, requireLogin } from './ui.js';
+import { renderCurrentUser, hideChatPanel } from './ui.js';
 
 import { getCurrentUser } from './state.js';
 
@@ -40,6 +40,7 @@ const deleteConvoyBtn = document.getElementById('deleteConvoyBtn');
 const contactsList = document.getElementById('contactsList');
 const groupCreateBox = document.getElementById('groupCreateBox');
 const activeConvoySelect = document.getElementById('activeConvoySelect');
+const dashboardUserInfo = document.getElementById('dashboardUserInfo');
 
 
 // ================= EVENTS =================
@@ -63,8 +64,6 @@ if (messageForm) {
 
 if (createGroupForm) createGroupForm.addEventListener('submit', createGroup);
 
-const dashboardUserInfo = document.getElementById('dashboardUserInfo');
-
 if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
 if (loadMembersBtn) loadMembersBtn.addEventListener('click', loadMembers);
@@ -77,10 +76,13 @@ if (shareLocationBtn) shareLocationBtn.addEventListener('click', shareLocation);
 
 if (showDirectBtn) showDirectBtn.addEventListener('click', loadContacts);
 if (showGroupsBtn) showGroupsBtn.addEventListener('click', loadGroupChats);
+if (leaveGroupBtn) leaveGroupBtn.addEventListener('click', leaveGroupChat);
+
 if (leaveConvoyBtn) leaveConvoyBtn.addEventListener('click', leaveConvoy);
 if (deleteConvoyBtn) deleteConvoyBtn.addEventListener('click', deleteConvoy);
 
-// convoy dropdown change
+
+// ================= CONVOY DROPDOWN CHANGE =================
 if (activeConvoySelect) {
   activeConvoySelect.addEventListener('change', function () {
     loadMembers();
@@ -131,14 +133,16 @@ if (currentUser) {
   }
 
   if (pathname.endsWith('/messages.html')) {
-  await refreshMessagesOnly();
-}
+    loadContacts();
+  }
 }
 
+
+// ================= NOTIFICATIONS =================
 startNotificationSystem();
 
-startNotificationSystem();
 
+// ================= AUTO REFRESH =================
 let isAutoRefreshing = false;
 
 setInterval(async function () {
@@ -162,10 +166,6 @@ setInterval(async function () {
 
     if (pathname.endsWith('/dashboard.html')) {
       await loadFriends();
-    }
-
-    if (pathname.endsWith('/messages.html')) {
-      await loadContacts();
     }
   } finally {
     isAutoRefreshing = false;
