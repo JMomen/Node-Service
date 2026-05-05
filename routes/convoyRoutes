@@ -238,5 +238,53 @@ module.exports = function (db) {
     }
   });
 
+  // LEAVE CONVOY
+router.delete('/convoys/:convoyID/leave', async function (req, res) {
+  const convoyID = req.params.convoyID;
+  const userID = req.body.userID;
+
+  try {
+    const [members] = await db.query(
+      'SELECT role FROM convoy_members WHERE convoyID = ? AND userID = ?',
+      [convoyID, userID]
+    );
+
+    if (members.length === 0) {
+      return res.status(404).json({
+        message: 'You are not in this convoy.'
+      });
+    }
+
+    if (members[0].role === 'host') {
+      return res.status(400).json({
+        message: 'Host cannot leave. Make someone else host first.'
+      });
+    }
+
+    await db.query(
+      'DELETE FROM convoy_members WHERE convoyID = ? AND userID = ?',
+      [convoyID, userID]
+    );
+
+    await db.query(
+      'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
+      [convoyID, userID]
+    );
+
+    await db.query(
+  'DELETE FROM gps WHERE convoyID = ? AND userID = ?',
+  [convoyID, userID]
+);
+
+    res.json({
+      message: 'You left the convoy.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Could not leave convoy.'
+    });
+  }
+});
+
   return router;
 };

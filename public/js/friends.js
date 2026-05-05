@@ -283,3 +283,14 @@ if (toggleBlockedBtn) {
     await loadFriends();
   });
 }
+
+export async function showFriendsOnly() {
+  showingBlocked = false;
+
+  const toggleBlockedBtn = document.getElementById('toggleBlockedBtn');
+  if (toggleBlockedBtn) {
+    toggleBlockedBtn.textContent = 'Show Blocked Users';
+  }
+
+  await loadFriends();
+}

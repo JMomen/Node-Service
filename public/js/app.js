@@ -1,8 +1,8 @@
 import { registerUser, loginUser, logout } from './auth.js';
 
-import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMember } from './convoys.js';
+import { createConvoy, joinConvoy, loadMembers, loadConvoys, makeHost, kickMember, leaveConvoy } from './convoys.js';
 
-import { sendFriendRequest, loadFriends, loadRequests, loadContacts } from './friends.js';
+import { sendFriendRequest, loadFriends, loadRequests, loadContacts, showFriendsOnly } from './friends.js';
 
 import { sendDirectMessage } from './messages.js';
 
@@ -34,7 +34,7 @@ const showRequestsBtn = document.getElementById('showRequestsBtn');
 const shareLocationBtn = document.getElementById('shareLocationBtn');
 const showDirectBtn = document.getElementById('showDirectBtn');
 const showGroupsBtn = document.getElementById('showGroupsBtn');
-const leaveGroupBtn = document.getElementById('leaveGroupBtn');
+const leaveConvoyBtn = document.getElementById('leaveConvoyBtn');
 
 const contactsList = document.getElementById('contactsList');
 const groupCreateBox = document.getElementById('groupCreateBox');
@@ -69,14 +69,14 @@ if (logoutBtn) logoutBtn.addEventListener('click', logout);
 if (loadMembersBtn) loadMembersBtn.addEventListener('click', loadMembers);
 if (loadGpsBtn) loadGpsBtn.addEventListener('click', loadGps);
 
-if (showFriendsBtn) showFriendsBtn.addEventListener('click', loadFriends);
+if (showFriendsBtn) showFriendsBtn.addEventListener('click', showFriendsOnly);
 if (showRequestsBtn) showRequestsBtn.addEventListener('click', loadRequests);
 
 if (shareLocationBtn) shareLocationBtn.addEventListener('click', shareLocation);
 
 if (showDirectBtn) showDirectBtn.addEventListener('click', loadContacts);
 if (showGroupsBtn) showGroupsBtn.addEventListener('click', loadGroupChats);
-if (leaveGroupBtn) leaveGroupBtn.addEventListener('click', leaveGroupChat);
+if (leaveConvoyBtn) leaveConvoyBtn.addEventListener('click', leaveConvoy);
 
 
 // convoy dropdown change
@@ -135,3 +135,28 @@ if (currentUser) {
 }
 
 startNotificationSystem();
+
+setInterval(function () {
+  const currentUser = getCurrentUser();
+  const pathname = window.location.pathname;
+
+  if (!currentUser) return;
+
+  if (pathname.endsWith('/friends.html')) {
+    loadFriends();
+    loadRequests();
+  }
+
+  if (pathname.endsWith('/convoys.html')) {
+    loadConvoys();
+  }
+
+  if (pathname.endsWith('/dashboard.html')) {
+    loadConvoys();
+    loadFriends();
+  }
+
+  if (pathname.endsWith('/messages.html')) {
+    loadContacts();
+  }
+}, 1500);

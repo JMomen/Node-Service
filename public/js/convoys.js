@@ -220,3 +220,27 @@ export async function loadMembers() {
     if (membersList) membersList.innerHTML = `<p class="error">${error.message}</p>`;
   }
 }
+
+  export async function leaveConvoy() {
+  const currentUser = getCurrentUser();
+  const convoyID = getActiveConvoyID();
+
+  if (!currentUser || !convoyID) {
+    setText(convoyResult, 'Select a convoy first.', true);
+    return;
+  }
+
+  try {
+    const data = await api(`/convoys/${convoyID}/leave`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        userID: currentUser.userID
+      })
+    });
+
+    setText(convoyResult, data.message);
+    await loadConvoys();
+  } catch (error) {
+    setText(convoyResult, error.message, true);
+  }
+}
