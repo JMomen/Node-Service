@@ -254,9 +254,11 @@ export async function deleteConvoy() {
     return;
   }
 
-  const confirmDelete = confirm('Are you sure you want to delete this convoy? This removes all members and GPS data.');
+  const confirmed = confirm(
+    'Are you sure you want to delete this convoy? This will remove all members and GPS data.'
+  );
 
-  if (!confirmDelete) {
+  if (!confirmed) {
     return;
   }
 

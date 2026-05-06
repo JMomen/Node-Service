@@ -37,8 +37,7 @@ const friendRequestForm = document.getElementById('friendRequestForm');
 const messageForm = document.getElementById('messageForm');
 
 const logoutBtn = document.getElementById('logoutBtn');
-const loadMembersBtn = document.getElementById('loadMembersBtn');
-const loadGpsBtn = document.getElementById('loadGpsBtn');
+
 const showFriendsBtn = document.getElementById('showFriendsBtn');
 const showRequestsBtn = document.getElementById('showRequestsBtn');
 const shareLocationBtn = document.getElementById('shareLocationBtn');
@@ -66,9 +65,6 @@ if (messageForm) {
 }
 
 if (logoutBtn) logoutBtn.addEventListener('click', logout);
-
-if (loadMembersBtn) loadMembersBtn.addEventListener('click', loadMembers);
-if (loadGpsBtn) loadGpsBtn.addEventListener('click', loadGps);
 
 if (showFriendsBtn) showFriendsBtn.addEventListener('click', showFriendsOnly);
 if (showRequestsBtn) showRequestsBtn.addEventListener('click', loadRequests);

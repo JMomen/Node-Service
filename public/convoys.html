@@ -69,13 +69,16 @@
         <h3>Active Convoy</h3>
         <label for="activeConvoySelect">Select convoy</label>
         <select id="activeConvoySelect"></select>
-        <div class="row gap small-top wrap">
-          <button id="loadMembersBtn" type="button">Load Members</button>
-          <button id="loadGpsBtn" type="button">Load GPS</button>
-          <button id="shareLocationBtn" type="button">Share My Location</button>
-          <button id="leaveConvoyBtn" type="button" class="block-btn">Leave Convoy</button>
-          <button id="deleteConvoyBtn" type="button" class="block-btn">Delete Convoy</button>
-        </div>
+
+        <div class="convoy-actions">
+  <button id="shareLocationBtn" type="button">Share My Location</button>
+</div>
+
+<div class="danger-actions">
+  <button id="leaveConvoyBtn" type="button" class="block-btn">Leave Convoy</button>
+  <button id="deleteConvoyBtn" type="button" class="block-btn">Delete Convoy</button>
+</div>
+
         <p id="gpsResult" class="result"></p>
         <h3 class="section-spacer">Members</h3>
         <div id="membersList" class="list-box"></div>
