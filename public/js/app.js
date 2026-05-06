@@ -1,0 +1,176 @@
+import { registerUser, loginUser, logout } from './auth.js';
+
+import {
+  createConvoy,
+  joinConvoy,
+  loadMembers,
+  loadConvoys,
+  leaveConvoy,
+  deleteConvoy
+} from './convoys.js';
+
+import {
+  sendFriendRequest,
+  loadFriends,
+  loadRequests,
+  loadContacts,
+  showFriendsOnly
+} from './friends.js';
+
+import { sendDirectMessage } from './messages.js';
+import { loadGroupChats, sendMessage as sendGroupMessage, getSelectedGroupChat } from './groupchats.js';
+
+import { shareLocation, loadGps } from './gps.js';
+
+import { renderCurrentUser, hideChatPanel } from './ui.js';
+
+import { getCurrentUser } from './state.js';
+
+import { startNotificationSystem } from './notifications.js';
+
+
+// ================= ELEMENTS =================
+const registerForm = document.getElementById('registerForm');
+const loginForm = document.getElementById('loginForm');
+const createConvoyForm = document.getElementById('createConvoyForm');
+const joinConvoyForm = document.getElementById('joinConvoyForm');
+const friendRequestForm = document.getElementById('friendRequestForm');
+const messageForm = document.getElementById('messageForm');
+
+const logoutBtn = document.getElementById('logoutBtn');
+
+const showFriendsBtn = document.getElementById('showFriendsBtn');
+const showRequestsBtn = document.getElementById('showRequestsBtn');
+const shareLocationBtn = document.getElementById('shareLocationBtn');
+const showDirectBtn = document.getElementById('showDirectBtn');
+const showGroupsBtn = document.getElementById('showGroupsBtn');
+
+const leaveConvoyBtn = document.getElementById('leaveConvoyBtn');
+const deleteConvoyBtn = document.getElementById('deleteConvoyBtn');
+
+const contactsList = document.getElementById('contactsList');
+const activeConvoySelect = document.getElementById('activeConvoySelect');
+const dashboardUserInfo = document.getElementById('dashboardUserInfo');
+
+
+// ================= EVENTS =================
+if (registerForm) registerForm.addEventListener('submit', registerUser);
+if (loginForm) loginForm.addEventListener('submit', loginUser);
+
+if (createConvoyForm) createConvoyForm.addEventListener('submit', createConvoy);
+if (joinConvoyForm) joinConvoyForm.addEventListener('submit', joinConvoy);
+
+if (friendRequestForm) friendRequestForm.addEventListener('submit', sendFriendRequest);
+
+if (messageForm) {
+  messageForm.addEventListener('submit', function (event) {
+    if (getSelectedGroupChat()) {
+      sendGroupMessage(event);
+    } else {
+      sendDirectMessage(event);
+    }
+  });
+}
+
+if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+if (showFriendsBtn) showFriendsBtn.addEventListener('click', showFriendsOnly);
+if (showRequestsBtn) showRequestsBtn.addEventListener('click', loadRequests);
+
+if (shareLocationBtn) shareLocationBtn.addEventListener('click', shareLocation);
+
+if (showDirectBtn) showDirectBtn.addEventListener('click', loadContacts);
+if (showGroupsBtn) showGroupsBtn.addEventListener('click', loadGroupChats);
+
+if (leaveConvoyBtn) leaveConvoyBtn.addEventListener('click', leaveConvoy);
+if (deleteConvoyBtn) deleteConvoyBtn.addEventListener('click', deleteConvoy);
+
+
+// ================= CONVOY DROPDOWN CHANGE =================
+if (activeConvoySelect) {
+  activeConvoySelect.addEventListener('change', function () {
+    loadMembers();
+    loadGps();
+  });
+}
+
+
+// ================= UI RESET =================
+if (contactsList) contactsList.innerHTML = '';
+
+renderCurrentUser();
+
+if (dashboardUserInfo && getCurrentUser()) {
+  const user = getCurrentUser();
+  dashboardUserInfo.textContent = `${user.first_name} ${user.last_name} (@${user.userName})`;
+}
+
+if (document.getElementById('chatPanel')) {
+  hideChatPanel();
+}
+
+
+// ================= AUTH / PAGE LOGIC =================
+const currentUser = getCurrentUser();
+const pathname = window.location.pathname;
+
+if (pathname !== '/login.html' && pathname !== '/' && !currentUser) {
+  window.location.href = '/login.html';
+}
+
+if (currentUser) {
+  if (
+    pathname.endsWith('/dashboard.html') ||
+    pathname.endsWith('/convoys.html')
+  ) {
+    loadConvoys();
+  }
+
+  if (pathname.endsWith('/friends.html')) {
+    loadFriends();
+    loadRequests();
+  }
+
+  if (pathname.endsWith('/dashboard.html')) {
+    loadFriends();
+  }
+
+  if (pathname.endsWith('/messages.html')) {
+    loadContacts();
+  }
+}
+
+
+// ================= NOTIFICATIONS =================
+startNotificationSystem();
+
+
+// ================= AUTO REFRESH =================
+let isAutoRefreshing = false;
+
+setInterval(async function () {
+  const currentUser = getCurrentUser();
+  const pathname = window.location.pathname;
+
+  if (!currentUser || isAutoRefreshing) return;
+
+  isAutoRefreshing = true;
+
+  try {
+    if (pathname.endsWith('/friends.html')) {
+      await loadFriends();
+      await loadRequests();
+    }
+
+    if (pathname.endsWith('/convoys.html')) {
+      await loadMembers();
+      await loadGps();
+    }
+
+    if (pathname.endsWith('/dashboard.html')) {
+      await loadFriends();
+    }
+  } finally {
+    isAutoRefreshing = false;
+  }
+}, 2000);

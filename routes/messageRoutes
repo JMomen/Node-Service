@@ -1,0 +1,57 @@
+// This file handles all messaging backend by Gil
+
+module.exports = function (db) {
+  const express = require('express');
+  const router = express.Router();
+
+  router.post('/messages', async function (req, res) {
+    try {
+      const sender_id = req.body.sender_id;
+      const receiver_id = req.body.receiver_id;
+      const message_text = req.body.message_text;
+
+      if (!sender_id || !receiver_id || !message_text) {
+        return res.status(400).json({
+          message: 'Missing message data.'
+        });
+      }
+
+      await db.query(
+        'INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)',
+        [sender_id, receiver_id, message_text.trim()]
+      );
+
+      res.json({
+        message: 'Message sent.'
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not send message.'
+      });
+    }
+  });
+
+  router.get('/messages/:user1/:user2', async function (req, res) {
+    try {
+      const user1 = req.params.user1;
+      const user2 = req.params.user2;
+
+      const [rows] = await db.query(
+        `SELECT id, sender_id, receiver_id, message_text, created_at
+         FROM messages
+         WHERE (sender_id = ? AND receiver_id = ?)
+            OR (sender_id = ? AND receiver_id = ?)
+         ORDER BY created_at ASC, id ASC`,
+        [user1, user2, user2, user1]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Could not load messages.'
+      });
+    }
+  });
+
+  return router;
+};

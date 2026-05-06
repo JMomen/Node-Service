@@ -1,0 +1,79 @@
+module.exports = function (db) {
+  const express = require('express');
+  const router = express.Router();
+
+  // GET ALL CONVOY CHATS FOR USER
+  router.get('/:userID', async function (req, res) {
+    try {
+      const userID = req.params.userID;
+
+      const [rows] = await db.query(
+        `SELECT c.convoyID, c.name, c.joinCode, c.host_userID
+         FROM convoys c
+         INNER JOIN convoy_members cm ON c.convoyID = cm.convoyID
+         WHERE cm.userID = ?
+         ORDER BY c.created_at DESC`,
+        [userID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Could not load convoy chats.' });
+    }
+  });
+
+  // GET MESSAGES FOR ONE CONVOY
+  router.get('/convoy/:convoyID', async function (req, res) {
+    try {
+      const convoyID = req.params.convoyID;
+
+      const [rows] = await db.query(
+        `SELECT cm.id,
+                cm.convoyID,
+                cm.senderID AS sender_id,
+                cm.messageText AS message_text,
+                cm.created_at,
+                u.first_name,
+                u.last_name,
+                u.userName
+         FROM convoy_messages cm
+         INNER JOIN users u ON cm.senderID = u.userID
+         WHERE cm.convoyID = ?
+         ORDER BY cm.created_at ASC, cm.id ASC`,
+        [convoyID]
+      );
+
+      res.json(rows);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Could not load convoy messages.' });
+    }
+  });
+
+  // SEND MESSAGE TO CONVOY
+  router.post('/convoy/send', async function (req, res) {
+    try {
+      const convoyID = req.body.convoyID;
+      const senderID = req.body.sender_id;
+      const messageText = req.body.message_text;
+
+      if (!convoyID || !senderID || !messageText) {
+        return res.status(400).json({ error: 'Missing fields.' });
+      }
+
+      await db.query(
+        `INSERT INTO convoy_messages (convoyID, senderID, messageText)
+         VALUES (?, ?, ?)`,
+        [convoyID, senderID, messageText.trim()]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Could not send convoy message.' });
+    }
+  });
+
+  return router;
+};

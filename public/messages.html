@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messages | Convoy</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="./Convoy.jpg" alt="Convoy logo" class="logo" />
+      <div>
+        <h1>Convoy</h1>
+        <p>Travel together.</p>
+      </div>
+    </div>
+
+<nav class="side-nav">
+  <a class="nav-link" href="/dashboard.html">Dashboard</a>
+
+  <a class="nav-link" href="/convoys.html" data-notify="convoys">
+    Convoys
+    <span class="notification-dot hidden"></span>
+  </a>
+
+  <a class="nav-link" href="/friends.html" data-notify="friends">
+    Friends
+    <span class="notification-dot hidden"></span>
+  </a>
+
+  <a class="nav-link active" href="/messages.html" data-notify="messages">
+    Messages
+    <span class="notification-dot hidden"></span>
+  </a>
+</nav>
+
+    <div class="sidebar-footer">
+      <p id="currentUser" class="current-user"></p>
+      <button id="logoutBtn" type="button" class="ghost-btn">Logout</button>
+    </div>
+  </aside>
+  <main class="app-main">
+    <section class="page-header">
+      <p class="eyebrow">Convoy App</p>
+      <h2>Messages</h2>
+      <p>Send direct messages or open the automatic chat for each convoy you belong to.</p>
+    </section>
+    <section class="card wide-card">
+      <div class="contacts-layout">
+        <div>
+          <h3>Chats</h3>
+          <div class="row gap small-top chat-tabs">
+            <button type="button" id="showDirectBtn">Direct Messages</button>
+            <button type="button" id="showGroupsBtn">Convoy Chats</button>
+          </div>
+          <div id="contactsList" class="list-box contacts"></div>
+        </div>
+        <div id="chatPanel" class="chat-panel" style="display:none;">
+          <h3 id="chatTitle"></h3>
+          <button id="leaveGroupBtn" class="hidden" style="display:none;">Leave Group</button>
+          <div id="messagesBox" class="messages-box"></div>
+          <form id="messageForm" class="message-form">
+            <input id="messageInput" placeholder="Type a message" />
+            <button type="submit">Send</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
